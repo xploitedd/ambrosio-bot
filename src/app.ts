@@ -1,4 +1,4 @@
-import { AuditLogEvent, Client, GatewayIntentBits, PermissionsBitField } from "discord.js"
+import { Client, GatewayIntentBits } from "discord.js"
 import { REST } from "@discordjs/rest"
 import CommandRegistry from "./commands/registry"
 import MusicHandler, { MusicHandlerSupplier } from "./music/handler"
