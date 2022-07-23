@@ -29,6 +29,7 @@
     "erlpack": "^0.1.4",
     "sodium-native": "^3.3.0",
     "utf-8-validate": "^5.0.9",
+    "winston": "^3.8.1",
     "youtube-dl-exec": "^2.1.4",
     "ytdl-core": "^4.11.0",
     "zlib-sync": "^0.1.7"

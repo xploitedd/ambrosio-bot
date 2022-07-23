@@ -1,4 +1,5 @@
 import { Readable } from "stream";
+import { logger } from "../app";
 
 export interface MusicInfo {
     query: string
@@ -40,13 +41,18 @@ export default class PlayerSourceRegistry {
 
     getSource(query: string): PlayerSource | null {
         for (const source of this._sources) {
-            if (source.matchesSource(query))
+            if (source.matchesSource(query)) {
+                logger.debug(`Found a player source that matches "${query}"`)
                 return source
+            }
         }
 
-        if (this._fallback?.matchesSource(query))
+        if (this._fallback?.matchesSource(query)) {
+            logger.debug(`Using the fallback player source for "${query}"`)
             return this._fallback
+        }
 
+        logger.warn(`No player source has been found for "${query}"`)
         return null
     }
 }

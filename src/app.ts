@@ -9,11 +9,26 @@ import PlayerSourceRegistry from "./music/sources"
 import YoutubePlayerSource from "./music/youtube/youtubeVideoSource"
 import MusicPlayer from "./music/player"
 import { createAudioPlayer, createAudioResource, demuxProbe } from "@discordjs/voice"
+import winston from "winston"
+
+const loggingLevel = process.env.LOG_LEVEL || "info"
+
+export const logger = winston.createLogger({
+    level: loggingLevel,
+    transports: [
+        new winston.transports.Console({ 
+            format: winston.format.combine(
+                winston.format.timestamp(),
+                winston.format.colorize({ all: true })
+            )
+        })
+    ]
+})
 
 const discordToken = process.env.DISCORD_TOKEN
 
 if (discordToken == undefined) {
-    console.error(`Please define the DISCORD_TOKEN environment variable`)
+    logger.error("Please define the DISCORD_TOKEN environment variable")
     process.exit(1)
 }
 
@@ -59,7 +74,7 @@ const commandRegistry = new CommandRegistry(client, rest)
 
 client.on("ready", async () => {
     try {
-        console.log(`client is now ready... ${client.user?.username}`)
+        logger.info(`Client is now ready: ${client.user?.username}`)
         await commandRegistry.registerCommands()
         commandRegistry.registerInteractionListener()
     } catch (e) {

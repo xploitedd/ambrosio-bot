@@ -1,6 +1,7 @@
 import { AudioPlayer, AudioPlayerStatus, AudioResource, PlayerSubscription, VoiceConnection } from "@discordjs/voice";
 import EventEmitter from "events";
 import { Readable } from "stream";
+import { logger } from "../app";
 import PlayerSourceRegistry, { MusicInfo, PlayerSingleSource, isPlaylistSource, isSingleSource } from "./sources";
 
 interface QueueItem {
@@ -40,14 +41,18 @@ export default class MusicPlayer extends EventEmitter {
             throw new Error("No source found for the specified content")
 
         if (isPlaylistSource(playerSource)) {
+            logger.debug(`Fetching playlist items for query "${query}"`)
             const queryItems = await playerSource.getQueryItems()
             for (const query of queryItems)
                 await this.play(query)
 
             return
         } else if (!isSingleSource(playerSource)) {
+            logger.error(`Invalid player source type found for "${query}" - ${playerSource}`)
             throw new Error("Invalid source type")
         }
+
+        logger.debug(`Fetching stream data for "${query}"`)
 
         const info = await playerSource.getInfo(query)
         if (this._playing || this._queue.length > 0) {

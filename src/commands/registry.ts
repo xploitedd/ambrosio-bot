@@ -1,5 +1,6 @@
 import { REST } from "@discordjs/rest";
 import { ChatInputCommandInteraction, Client, Routes, SlashCommandBuilder } from "discord.js";
+import { logger } from "../app";
 
 export interface Command {
     getCommandDefinition(): SlashCommandBuilder
@@ -19,6 +20,8 @@ export default class CommandRegistry {
     addCommand(command: Command): CommandRegistry {
         const definition = command.getCommandDefinition()
         this._commands[definition.name] = command
+
+        logger.debug(`Added new command: ${definition.name}`)
         return this
     }
 
@@ -46,6 +49,8 @@ export default class CommandRegistry {
             if (!command)
                 return
 
+            logger.debug(`Received command ${interaction.commandName} from ${interaction.user.id}`)
+
             try {
                 await command.handleCommand(this._discordClient, interaction)
             } catch (e) {
@@ -56,7 +61,7 @@ export default class CommandRegistry {
                     interaction.reply({ content, ephemeral: true })
                 }
 
-                console.error(e)
+                logger.error(`Error while handling command ${e}`)
             }
         })
     }

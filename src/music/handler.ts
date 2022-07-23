@@ -1,5 +1,6 @@
-import { AudioPlayerStatus, entersState, joinVoiceChannel, VoiceConnectionStatus } from "@discordjs/voice";
+import { entersState, joinVoiceChannel, VoiceConnectionStatus } from "@discordjs/voice";
 import { ChannelType, ChatInputCommandInteraction, Client, EmbedBuilder, Guild, TextChannel, VoiceChannel } from "discord.js";
+import { logger } from "../app";
 import MusicPlayer from "./player";
 import { MusicInfo } from "./sources";
 
@@ -38,15 +39,19 @@ export default class MusicHandler {
     }
 
     async play(query: string, voiceChannel: VoiceChannel, interaction: ChatInputCommandInteraction) {
+        logger.debug(`Received music query "${query}" from ${interaction.user.id} in guild ${voiceChannel.guildId}`)
+
         if (this._currentChannel) {
             if (this._currentChannel.id === voiceChannel.id) {
                 this._musicPlayer.once("queued", (info: MusicInfo) => {
+                    logger.info(`A music has been queued (${info.title}) on voice channel ${voiceChannel.id} of guild ${voiceChannel.guildId}`)
                     interaction.editReply({ content: `Added to the queue: ${info.title}` })
                 })
 
                 this._musicPlayer.play(query)
             } else {
                 // bot is busy in this guild
+                logger.debug(`Bot is busy in another VC. Requested: ${voiceChannel.id}, Current: ${this._currentChannel.id}`)
                 interaction.editReply({ content: "I'm currently busy playing songs in another channel!" })
             }
 
@@ -68,11 +73,15 @@ export default class MusicHandler {
                 throw new Error("Error creating player subscription")
 
             this._musicPlayer.once("playing", (info: MusicInfo) => {
+                logger.info(`Player has started playing on VC ${voiceChannel.id}. Song: ${info.title}`)
+
                 const embed = _createPlayingEmbed(info)
                 interaction.editReply({ embeds: [embed] })
             })
 
             this._musicPlayer.on("end", () => {
+                logger.info(`The player has ended for VC ${voiceChannel.id}. Cleaning up...`)
+
                 sub.unsubscribe()
                 conn.destroy()
                 this._musicPlayer.removeAllListeners()
@@ -81,24 +90,31 @@ export default class MusicHandler {
 
             this._musicPlayer.play(query)
         } catch (e) {
+            logger.error(`An error occurred, destroying voice connection on ${voiceChannel.id}. ${e}`)
             conn.destroy()
-            console.error(e)
-
             this._currentChannel = undefined
         }
     }
 
     stop(interaction: ChatInputCommandInteraction) {
         // Stop the music playback & disconnect from voice
-        this._musicPlayer.clearQueue()
-        this._musicPlayer.next()
+        if (this._currentChannel) {
+            logger.debug(`Stopping the current music playback on VC ${this._currentChannel?.id}`)
+
+            this._musicPlayer.clearQueue()
+            this._musicPlayer.next()
+        }
 
         interaction.deleteReply()
     }
 
     skip(interaction: ChatInputCommandInteraction) {
         // Skip the current song
-        this._musicPlayer.next()
+        if (this._currentChannel) {
+            logger.debug(`Skipping to the next music on VC ${this._currentChannel.id}`)
+            this._musicPlayer.next()
+        }
+
         interaction.deleteReply()
     }
 

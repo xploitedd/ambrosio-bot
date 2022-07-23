@@ -12,11 +12,11 @@ export default class YoutubePlayerSource implements PlayerSingleSource {
         return {
             query,
             title: info.videoDetails.title,
-            thumbnail: info.videoDetails.thumbnails[0].url,
+            thumbnail: info.videoDetails.thumbnails[2].url,
             url: info.videoDetails.video_url,
             author: {
                 name: info.videoDetails.author.name,
-                photo: info.videoDetails.author.avatar
+                photo: info.videoDetails.author.thumbnails?.[0].url ?? info.videoDetails.author.avatar
             }
         }
     }
