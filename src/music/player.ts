@@ -2,7 +2,7 @@ import { AudioPlayer, AudioPlayerStatus, AudioResource, PlayerSubscription, Voic
 import EventEmitter from "events";
 import { Readable } from "stream";
 import { logger } from "../app";
-import PlayerSourceRegistry, { MusicInfo, PlayerSingleSource, isPlaylistSource, isSingleSource } from "./sources";
+import PlayerSourceRegistry, { MusicInfo, PlayerSingleSource, isPlaylistSource, isSingleSource, PlayerSource } from "./sources";
 
 interface QueueItem {
     info: MusicInfo
@@ -35,6 +35,16 @@ export default class MusicPlayer extends EventEmitter {
         this._audioPlayer.play(resource)
     }
 
+    private _getPlayerSource(query: string): PlayerSource | null {
+        const playerSource = this._sourceRegistry.getSource(query)
+        if (playerSource === null) {
+            logger.warn(`No source found for the query: "${query}"`)
+            return null
+        }
+
+        return playerSource
+    }
+
     private async _playMultiple(items: string[]): Promise<boolean> {
         const first = items.shift()
         if (!first)
@@ -42,11 +52,20 @@ export default class MusicPlayer extends EventEmitter {
 
         const result = await this.play(first)
         if (result) {
-            // guarantee the order of the playlist items
-            (async () => {
-                for (const query of items)
-                    await this.play(query)
-            })()
+            for (const query of items) {
+                try {
+                    const source = this._getPlayerSource(query)
+                    if (source === null || !isSingleSource(source))
+                        continue
+
+                    const info = await source.getInfo(query)
+                    this._queue.push({ info, source })
+                } catch (e) {
+                    logger.warn(`Cannot enqueue a video with query "${query}. Reason: ${e}"`)
+                }
+            }
+
+            this.emit("queued", this._queue[this._queue.length - 1])
 
             return true
         } else {
@@ -80,11 +99,9 @@ export default class MusicPlayer extends EventEmitter {
 
     async play(query: string): Promise<boolean> {
         try {
-            const playerSource = this._sourceRegistry.getSource(query)
-            if (playerSource === null) {
-                logger.warn(`No source found for the query: "${query}"`)
+            const playerSource = this._getPlayerSource(query)
+            if (playerSource === null)
                 return false
-            }
 
             if (isPlaylistSource(playerSource)) {
                 logger.debug(`Fetching playlist items for query "${query}"`)
@@ -150,5 +167,9 @@ export default class MusicPlayer extends EventEmitter {
 
     getQueue(): MusicInfo[] {
         return this._queue.map(it => it.info)
+    }
+
+    getCurrentMusic(): MusicInfo | undefined {
+        return this._playing
     }
 }

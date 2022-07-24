@@ -35,21 +35,25 @@ export default class MusicHandler {
         this._musicPlayer = musicPlayer
         this._textManager = textManager
 
-        this._musicPlayer.on("playing", async (info: MusicInfo) => {
+        const setMessages = async (queue: MusicInfo[], info?: MusicInfo) => {
             try {
                 await this._textManager.setPlaying(info)
-                await this._textManager.setQueue(this.getQueue())
+                await this._textManager.setQueue(queue)
             } catch (e) {
-                logger.error(`Error editing playing message: ${e}`)
+                logger.error(`Error editing message: ${e}`)
             }
+        }
+
+        this._musicPlayer.on("playing", async (info: MusicInfo) => {
+            await setMessages(this.getQueue(), info)
         })
 
         this._musicPlayer.on("queued", async () => {
-            try {
-                await this._textManager.setQueue(this.getQueue())
-            } catch (e) {
-                logger.error(`Error editing queue message: ${e}`)
-            }
+            await setMessages(this.getQueue(), this._musicPlayer.getCurrentMusic())
+        })
+
+        this._musicPlayer.on("end", async () => {
+            await setMessages([], undefined)
         })
 
         this._textManager.on("new_query", async (query: string, message: Message) => {
@@ -140,7 +144,7 @@ export default class MusicHandler {
             this._musicPlayer.next()
         }
 
-        interaction.deleteReply()
+        interaction.editReply({ content: "Stopped music playback" })
     }
 
     skip(interaction: ChatInputCommandInteraction) {
@@ -152,13 +156,13 @@ export default class MusicHandler {
                     const embed = createPlayingEmbed(info)
                     interaction.editReply({ embeds: [embed] })
                 })
-            } else {
-                interaction.deleteReply()
-            }
 
-            this._musicPlayer.next()
+                this._musicPlayer.next()
+            } else {
+                this.stop(interaction)
+            }
         } else {
-            interaction.deleteReply()
+            interaction.editReply({ content: "You should try playing something first :p" })
         }
     }
 

@@ -27,10 +27,14 @@ export function createQueueEmbed(queue: MusicInfo[]): EmbedBuilder {
             .setDescription("Add some items to get the party started")
     }
 
+    const sliced = queue.slice(0, 20)
     return new EmbedBuilder()
         .setTitle(`${count} item(s) in the queue`)
-        .addFields(queue.map((it, idx) => ({
-            name: `${idx + 1} ${it.title}`,
+        .addFields(sliced.map((it, idx) => ({
+            name: `#${idx + 1} ${it.title}`,
             value: it.url
         })))
+        .setFooter({
+            text: `${count > 20 ? count - 20 : 0} music(s) are hidden in this view`
+        })
 }

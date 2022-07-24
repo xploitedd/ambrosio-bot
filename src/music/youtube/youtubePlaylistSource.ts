@@ -33,7 +33,7 @@ export default class YoutubePlaylistSource implements PlayerPlaylistSource {
     }
 
     async getQueryItems(query: string, options?: PlaylistQueryOptions): Promise<string[]> {
-        const params = new URLSearchParams(query)
+        const params = new URLSearchParams(new URL(query).searchParams)
         const list = params.get("list")
         if (list === null) {
             logger.error(`Youtube Playlist - list parameter not found in query "${query}"`)

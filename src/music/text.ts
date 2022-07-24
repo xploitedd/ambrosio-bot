@@ -28,8 +28,8 @@ export default class TextChannelManager extends EventEmitter {
         const channel = this._textChannel
         const client = channel.client
 
-        const messages = await this._textChannel.messages.fetch()
-            .then(it => it.filter(user => user.id === client.user?.id))
+        const messages = await this._textChannel.messages.fetch({ cache: false })
+            .then(it => it.filter(msg => msg.author.id === client.user?.id))
             .then(it => it.map(msg => msg))
 
         if (messages.length < 2) {
@@ -38,8 +38,8 @@ export default class TextChannelManager extends EventEmitter {
 
             this._playingMessage = await channel.send({ embeds: [createPlayingEmbed() ]})
         } else {
-            this._queueMessage = messages[0]
-            this._playingMessage = messages[1]
+            this._queueMessage = messages[1]
+            this._playingMessage = messages[0]
         }
     }
 
@@ -71,7 +71,7 @@ export default class TextChannelManager extends EventEmitter {
         await this._setupMessages()
     }
 
-    async setPlaying(info: MusicInfo) {
+    async setPlaying(info?: MusicInfo) {
         if (!this._playingMessage)
             await this._setupPromise
 
