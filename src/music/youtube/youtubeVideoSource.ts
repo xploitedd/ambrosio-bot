@@ -44,7 +44,7 @@ export default class YoutubePlayerSource implements PlayerSingleSource {
         return ytdl(
             query, 
             { 
-                quality: "highestaudio", 
+                quality: "lowestaudio", 
                 filter: "audioonly",
                 highWaterMark: 1 << 62,
                 liveBuffer: 1 << 62,

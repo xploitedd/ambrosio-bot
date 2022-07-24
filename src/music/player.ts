@@ -54,8 +54,11 @@ export default class MusicPlayer extends EventEmitter {
 
                 const result = await this.play(first)
                 if (result) {
-                    for (const query of queryItems)
-                        this.play(query)
+                    // guarantee the order of the playlist items
+                    (async () => {
+                        for (const query of queryItems)
+                            await this.play(query)
+                    })()
 
                     return true
                 } else {
