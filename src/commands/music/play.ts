@@ -5,8 +5,8 @@ import { Command } from "../registry";
 export default class PlayCommand implements Command {
     private readonly _musicHandlerSupplier: MusicHandlerSupplier
 
-    constructor(musicHandlerSupplier: MusicHandlerSupplier) {
-        this._musicHandlerSupplier = musicHandlerSupplier
+    constructor(options: { musicHandlerSupplier: MusicHandlerSupplier }) {
+        this._musicHandlerSupplier = options.musicHandlerSupplier
     }
 
     getCommandDefinition(): SlashCommandBuilder {

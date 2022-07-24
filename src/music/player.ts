@@ -65,7 +65,7 @@ export default class MusicPlayer extends EventEmitter {
         }
 
         const info = next.info
-        const stream = await next.source.getStream(info.query)
+        const stream = await next.source.getStream(info)
         await this._play(info, stream)
     }
 
@@ -124,7 +124,7 @@ export default class MusicPlayer extends EventEmitter {
                 logger.error(`An error occurred while trying to play a music: ${error.message}`)
             })
 
-            this._play(info, await playerSource.getStream(query))
+            this._play(info, await playerSource.getStream(info))
             return true
         } catch (e) {
             logger.error(`Unexpected error in music player: ${e}`)

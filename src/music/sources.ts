@@ -22,7 +22,7 @@ export interface PlayerSource {
 
 export interface PlayerSingleSource extends PlayerSource {
     getInfo(query: string): Promise<MusicInfo>
-    getStream(query: string): Promise<Readable>
+    getStream(info: MusicInfo): Promise<Readable>
 }
 
 export interface PlayerPlaylistSource extends PlayerSource {

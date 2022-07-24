@@ -12,6 +12,8 @@ import { createAudioPlayer, createAudioResource, demuxProbe } from "@discordjs/v
 import winston from "winston"
 import { google } from "googleapis"
 import YoutubePlaylistSource from "./music/youtube/youtubePlaylistSource"
+import YoutubeTextSource from "./music/youtube/youtubeTextSource"
+import StopCommand from "./commands/music/stop"
 
 const loggingLevel = process.env.LOG_LEVEL || "info"
 
@@ -55,6 +57,7 @@ if (YOUTUBE_TOKEN) {
     })
 
     playerSourceRegistry.addSource(new YoutubePlaylistSource({ youtube }))
+        .setFallback(new YoutubeTextSource({ youtube }))
 } else {
     logger.warn("Define the YOUTUBE_TOKEN in your environment variable to enable more player sources")
 }
@@ -83,8 +86,9 @@ const rest = new REST().setToken(discordToken)
 
 const commandRegistry = new CommandRegistry(client, rest)
     .addCommand(new AboutCommand())
-    .addCommand(new PlayCommand(musicHandlerSupplier))
-    .addCommand(new SkipCommand(musicHandlerSupplier))
+    .addCommand(new PlayCommand({ musicHandlerSupplier }))
+    .addCommand(new SkipCommand({ musicHandlerSupplier }))
+    .addCommand(new StopCommand({ musicHandlerSupplier }))
 
 client.on("ready", async () => {
     try {

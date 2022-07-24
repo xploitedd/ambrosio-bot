@@ -1,6 +1,7 @@
 import { Readable } from "stream";
 import ytdl from "ytdl-core";
 import { MusicInfo, PlayerSingleSource } from "../sources";
+import { getYoutubeStream, videoInfoToMusicInfo } from "./util";
 
 export default class YoutubePlayerSource implements PlayerSingleSource {
     matchesSource(query: string): boolean {
@@ -28,28 +29,10 @@ export default class YoutubePlayerSource implements PlayerSingleSource {
 
     async getInfo(query: string): Promise<MusicInfo> {
         const info = await ytdl.getInfo(query)
-        return {
-            query,
-            title: info.videoDetails.title,
-            thumbnail: info.videoDetails.thumbnails[2].url,
-            url: info.videoDetails.video_url,
-            author: {
-                name: info.videoDetails.author.name,
-                photo: info.videoDetails.author.thumbnails?.[0].url ?? info.videoDetails.author.avatar
-            }
-        }
+        return videoInfoToMusicInfo(query, info)
     }
 
-    async getStream(query: string): Promise<Readable> {
-        return ytdl(
-            query, 
-            { 
-                quality: "lowestaudio", 
-                filter: "audioonly",
-                highWaterMark: 1 << 62,
-                liveBuffer: 1 << 62,
-                dlChunkSize: 0
-            }
-        )
+    async getStream(info: MusicInfo): Promise<Readable> {
+        return getYoutubeStream(info.url)
     }
 }

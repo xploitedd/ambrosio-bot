@@ -1,6 +1,7 @@
 import { PlayerPlaylistSource, PlaylistQueryOptions } from "../sources";
 import { youtube_v3 } from "googleapis";
 import { logger } from "../../app";
+import { getYoutubeUrl } from "./util";
 
 const MAX_LIMIT = 50
 
@@ -47,12 +48,12 @@ export default class YoutubePlaylistSource implements PlayerPlaylistSource {
 
         const items = res.data.items
         if (!items) {
-            logger.error(`No playlist items returned for the query "${query}"`)
+            logger.warn(`No playlist items returned for the query "${query}"`)
             throw new Error("No playlist items returned")
         }
 
         return items.filter(it => it.contentDetails !== undefined)
             .map(it => it.contentDetails?.videoId ?? "")
-            .map(it => `https://youtube.com/watch?v=${it}`)
+            .map(it => getYoutubeUrl(it))
     }
 }

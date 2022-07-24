@@ -1,8 +1,8 @@
-import { Client, ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
+import { ChatInputCommandInteraction, Client, PermissionsBitField, SlashCommandBuilder } from "discord.js";
 import { MusicHandlerSupplier } from "../../music/handler";
 import { Command } from "../registry";
 
-export default class SkipCommand implements Command {
+export default class StopCommand implements Command {
     private readonly _musicHandlerSupplier: MusicHandlerSupplier
 
     constructor(options: { musicHandlerSupplier: MusicHandlerSupplier }) {
@@ -11,9 +11,10 @@ export default class SkipCommand implements Command {
 
     getCommandDefinition(): SlashCommandBuilder {
         return new SlashCommandBuilder()
-            .setName("skip")
-            .setDescription("Skips the current music")
+            .setName("stop")
+            .setDescription("Stops the current music playback")
             .setDMPermission(false)
+            .setDefaultMemberPermissions(PermissionsBitField.Flags.ManageChannels)
     }
 
     async handleCommand(client: Client, interaction: ChatInputCommandInteraction): Promise<void> {
@@ -24,7 +25,6 @@ export default class SkipCommand implements Command {
         await interaction.deferReply()
 
         const musicHandler = this._musicHandlerSupplier(guild)
-        musicHandler.skip(interaction)
+        musicHandler.stop(interaction)
     }
-
 }
