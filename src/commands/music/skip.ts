@@ -21,7 +21,7 @@ export default class SkipCommand implements Command {
         if (guild === null)
             return
 
-        await interaction.deferReply()
+        await interaction.deferReply({ ephemeral: true })
 
         const musicHandler = this._musicHandlerSupplier(guild)
         musicHandler.skip(interaction)

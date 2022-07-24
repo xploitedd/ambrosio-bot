@@ -22,7 +22,7 @@ export default class StopCommand implements Command {
         if (guild === null)
             return
 
-        await interaction.deferReply()
+        await interaction.deferReply({ ephemeral: true })
 
         const musicHandler = this._musicHandlerSupplier(guild)
         musicHandler.stop(interaction)

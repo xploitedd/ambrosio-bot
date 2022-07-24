@@ -14,6 +14,7 @@ import { google } from "googleapis"
 import YoutubePlaylistSource from "./music/youtube/youtubePlaylistSource"
 import YoutubeTextSource from "./music/youtube/youtubeTextSource"
 import StopCommand from "./commands/music/stop"
+import TextChannelManager from "./music/text"
 
 const loggingLevel = process.env.LOG_LEVEL || "info"
 
@@ -77,7 +78,17 @@ const musicHandlerSupplier: MusicHandlerSupplier = guild => {
         }
     )
 
-    const newHandler = new MusicHandler(client, guild, musicPlayer)
+    const textManager = new TextChannelManager({
+        guild
+    })
+
+    const newHandler = new MusicHandler({
+        discordClient: client,
+        guild,
+        musicPlayer,
+        textManager
+    })
+
     musicCache[guild.id] = newHandler
     return newHandler
 }
