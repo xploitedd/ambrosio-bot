@@ -35,6 +35,49 @@ export default class MusicPlayer extends EventEmitter {
         this._audioPlayer.play(resource)
     }
 
+    private async _playMultiple(items: string[]): Promise<boolean> {
+        const first = items.shift()
+        if (!first)
+            return false
+
+        const result = await this.play(first)
+        if (result) {
+            // guarantee the order of the playlist items
+            (async () => {
+                for (const query of items)
+                    await this.play(query)
+            })()
+
+            return true
+        } else {
+            return false
+        }
+    }
+
+    private async _skipToNext() {
+        logger.debug(`The queue currently has ${this._queue.length} entries.`)
+        const next = this._queue.shift()
+        if (!next) {
+            this._audioPlayer.removeAllListeners()
+            this._playing = undefined
+            this.emit("end")
+            return
+        }
+
+        const info = next.info
+        const stream = await next.source.getStream(info.query)
+        await this._play(info, stream)
+    }
+
+    private _addToQueue(info: MusicInfo, source: PlayerSingleSource) {
+        this._queue.push({
+            info,
+            source
+        })
+
+        this.emit("queued", info)
+    }
+
     async play(query: string): Promise<boolean> {
         try {
             const playerSource = this._sourceRegistry.getSource(query)
@@ -48,22 +91,7 @@ export default class MusicPlayer extends EventEmitter {
                 const queryItems = await playerSource.getQueryItems(query)
                 logger.debug(`Playlist "${query}" found with ${queryItems.length} items`)
 
-                const first = queryItems.shift()
-                if (!first)
-                    return false
-
-                const result = await this.play(first)
-                if (result) {
-                    // guarantee the order of the playlist items
-                    (async () => {
-                        for (const query of queryItems)
-                            await this.play(query)
-                    })()
-
-                    return true
-                } else {
-                    return false
-                }
+                return this._playMultiple(queryItems)
             } else if (!isSingleSource(playerSource)) {
                 logger.error(`Invalid player source type found for "${query}" - ${playerSource}`)
                 return false
@@ -73,12 +101,7 @@ export default class MusicPlayer extends EventEmitter {
 
             const info = await playerSource.getInfo(query)
             if (this._playing || this._queue.length > 0) {
-                this._queue.push({
-                    info,
-                    source: playerSource
-                })
-
-                this.emit("queued", info)
+                this._addToQueue(info, playerSource)
                 return true
             }
 
@@ -86,20 +109,7 @@ export default class MusicPlayer extends EventEmitter {
                 if (newState.status === AudioPlayerStatus.Idle) {
                     for (; ;) {
                         try {
-                            logger.debug(`The queue currently has ${this._queue.length} entries.`)
-
-                            const next = this._queue.shift()
-                            if (!next) {
-                                this._audioPlayer.removeAllListeners()
-                                this._playing = undefined
-                                this.emit("end")
-                                return
-                            }
-
-                            const info = next.info
-                            const stream = await next.source.getStream(info.query)
-                            this._play(info, stream)
-
+                            await this._skipToNext()
                             break
                         } catch (e) {
                             logger.error(`An error occurred while trying to play "${info.query}": ${e}`)
