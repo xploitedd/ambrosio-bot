@@ -30,6 +30,7 @@ export default class TextChannelManager extends EventEmitter {
 
         const messages = await this._textChannel.messages.fetch({ cache: false })
             .then(it => it.filter(msg => msg.author.id === client.user?.id))
+            .then(it => it.filter(msg => msg.interaction === null))
             .then(it => it.map(msg => msg))
 
         if (messages.length < 2) {
