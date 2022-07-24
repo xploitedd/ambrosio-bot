@@ -10,6 +10,8 @@ import YoutubePlayerSource from "./music/youtube/youtubeVideoSource"
 import MusicPlayer from "./music/player"
 import { createAudioPlayer, createAudioResource, demuxProbe } from "@discordjs/voice"
 import winston from "winston"
+import { google } from "googleapis"
+import YoutubePlaylistSource from "./music/youtube/youtubePlaylistSource"
 
 const loggingLevel = process.env.LOG_LEVEL || "info"
 
@@ -44,6 +46,18 @@ const client = new Client({
 
 const playerSourceRegistry = new PlayerSourceRegistry()
     .addSource(new YoutubePlayerSource())
+
+const YOUTUBE_TOKEN = process.env.YOUTUBE_TOKEN
+if (YOUTUBE_TOKEN) {
+    const youtube = google.youtube({
+        version: "v3",
+        auth: YOUTUBE_TOKEN
+    })
+
+    playerSourceRegistry.addSource(new YoutubePlaylistSource({ youtube }))
+} else {
+    logger.warn("Define the YOUTUBE_TOKEN in your environment variable to enable more player sources")
+}
 
 const musicCache: { [key: string]: MusicHandler } = {}
 const musicHandlerSupplier: MusicHandlerSupplier = guild => {

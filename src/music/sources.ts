@@ -12,17 +12,21 @@ export interface MusicInfo {
     }
 }
 
+export interface PlaylistQueryOptions {
+    limit?: number
+}
+
 export interface PlayerSource {
     matchesSource(query: string): boolean
-    getInfo(query: string): Promise<MusicInfo>
 }
 
 export interface PlayerSingleSource extends PlayerSource {
+    getInfo(query: string): Promise<MusicInfo>
     getStream(query: string): Promise<Readable>
 }
 
 export interface PlayerPlaylistSource extends PlayerSource {
-    getQueryItems(): Promise<string[]>
+    getQueryItems(query: string, options?: PlaylistQueryOptions): Promise<string[]>
 }
 
 export default class PlayerSourceRegistry {

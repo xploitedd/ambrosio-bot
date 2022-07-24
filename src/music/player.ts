@@ -35,55 +35,88 @@ export default class MusicPlayer extends EventEmitter {
         this._audioPlayer.play(resource)
     }
 
-    async play(query: string) {
-        const playerSource = this._sourceRegistry.getSource(query)
-        if (playerSource === null)
-            throw new Error("No source found for the specified content")
+    async play(query: string): Promise<boolean> {
+        try {
+            const playerSource = this._sourceRegistry.getSource(query)
+            if (playerSource === null) {
+                logger.warn(`No source found for the query: "${query}"`)
+                return false
+            }
 
-        if (isPlaylistSource(playerSource)) {
-            logger.debug(`Fetching playlist items for query "${query}"`)
-            const queryItems = await playerSource.getQueryItems()
-            for (const query of queryItems)
-                await this.play(query)
+            if (isPlaylistSource(playerSource)) {
+                logger.debug(`Fetching playlist items for query "${query}"`)
+                const queryItems = await playerSource.getQueryItems(query)
+                logger.debug(`Playlist "${query}" found with ${queryItems.length} items`)
 
-            return
-        } else if (!isSingleSource(playerSource)) {
-            logger.error(`Invalid player source type found for "${query}" - ${playerSource}`)
-            throw new Error("Invalid source type")
-        }
+                const first = queryItems.shift()
+                if (!first)
+                    return false
 
-        logger.debug(`Fetching stream data for "${query}"`)
+                const result = await this.play(first)
+                if (result) {
+                    for (const query of queryItems)
+                        this.play(query)
 
-        const info = await playerSource.getInfo(query)
-        if (this._playing || this._queue.length > 0) {
-            this._queue.push({
-                info,
-                source: playerSource
+                    return true
+                } else {
+                    return false
+                }
+            } else if (!isSingleSource(playerSource)) {
+                logger.error(`Invalid player source type found for "${query}" - ${playerSource}`)
+                return false
+            }
+
+            logger.debug(`Fetching stream data for "${query}"`)
+
+            const info = await playerSource.getInfo(query)
+            if (this._playing || this._queue.length > 0) {
+                this._queue.push({
+                    info,
+                    source: playerSource
+                })
+
+                this.emit("queued", info)
+                return true
+            }
+
+            this._audioPlayer.on("stateChange", async (oldState, newState) => {
+                if (newState.status === AudioPlayerStatus.Idle) {
+                    for (; ;) {
+                        try {
+                            logger.debug(`The queue currently has ${this._queue.length} entries.`)
+
+                            const next = this._queue.shift()
+                            if (!next) {
+                                this._audioPlayer.removeAllListeners()
+                                this._playing = undefined
+                                this.emit("end")
+                                return
+                            }
+
+                            const info = next.info
+                            const stream = await next.source.getStream(info.query)
+                            this._play(info, stream)
+
+                            break
+                        } catch (e) {
+                            logger.error(`An error occurred while trying to play "${info.query}": ${e}`)
+                        }
+                    }
+                } else if (newState.status === AudioPlayerStatus.Playing) {
+                    this.emit("playing", this._playing)
+                }
             })
 
-            this.emit("queued", info)
-            return
+            this._audioPlayer.on("error", error => {
+                logger.error(`An error occurred while trying to play a music: ${error.message}`)
+            })
+
+            this._play(info, await playerSource.getStream(query))
+            return true
+        } catch (e) {
+            logger.error(`Unexpected error in music player: ${e}`)
+            return false
         }
-
-        this._audioPlayer.on("stateChange", async (oldState, newState) => {
-            if (newState.status === AudioPlayerStatus.Idle) {
-                const next = this._queue.shift()
-                if (!next) {
-                    this._audioPlayer.removeAllListeners()
-                    this._playing = undefined
-                    this.emit("end")
-                    return
-                }
-
-                const info = next.info
-                const stream = await next.source.getStream(info.query)
-                this._play(info, stream)
-            } else if (newState.status === AudioPlayerStatus.Playing) {
-                this.emit("playing", this._playing)
-            }
-        })
-
-        this._play(info, await playerSource.getStream(query))
     }
 
     subscribe(voiceConnection: VoiceConnection): PlayerSubscription | undefined {
