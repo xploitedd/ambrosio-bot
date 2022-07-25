@@ -29,6 +29,7 @@ dependencies:
   '@discordjs/opus': 0.8.0
   '@discordjs/rest': 1.0.0
   '@discordjs/voice': 0.11.0_4lnggka5p5b3p7x3jqdagy7awu
+  '@types/lodash': 4.14.182
   bufferutil: 4.0.6
   discord.js: 14.0.3_22kvxa7zeyivx4jp72v2w3pkvy
   erlpack: 0.1.4
@@ -42,7 +43,6 @@ dependencies:
   zlib-sync: 0.1.7
 
 devDependencies:
-  '@types/lodash': 4.14.182
   '@types/node': 18.0.6
   '@typescript-eslint/eslint-plugin': 5.30.7_6wltbjakwuqm7awqswigmiuhd4
   '@typescript-eslint/parser': 5.30.7_he2ccbldppg44uulnyq4rwocfa
@@ -264,7 +264,7 @@ packages:
 
   /@types/lodash/4.14.182:
     resolution: {integrity: sha512-/THyiqyQAP9AfARo4pF+aCGcyiQ94tX/Is2I7HofNRqoYLgN1PBoOWu2/zTA5zMxzP5EFutMtWtGAFRKUe961Q==}
-    dev: true
+    dev: false
 
   /@types/node/18.0.6:
     resolution: {integrity: sha512-/xUq6H2aQm261exT6iZTMifUySEt4GR5KX8eYyY+C4MSNPqSh9oNIP7tz2GLKTlFaiBbgZNxffoR3CVRG+cljw==}
