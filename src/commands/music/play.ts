@@ -32,7 +32,7 @@ export default class PlayCommand implements Command {
         if (member === null)
             return
 
-        await interaction.deferReply({ ephemeral: true })
+        await interaction.deferReply()
 
         const guildMember = member as GuildMember
         const voiceChannel = guildMember.voice.channel

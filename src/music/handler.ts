@@ -1,10 +1,12 @@
 import { entersState, joinVoiceChannel, VoiceConnection, VoiceConnectionStatus } from "@discordjs/voice";
-import { ChannelType, ChatInputCommandInteraction, Client, Guild, GuildMember, Message, VoiceChannel } from "discord.js";
+import { ChannelType, ChatInputCommandInteraction, Client, Guild, GuildMember, Message, MessagePayload, VoiceChannel, WebhookEditMessageOptions } from "discord.js";
 import { logger } from "../app";
 import MusicPlayer from "./player";
 import { MusicInfo } from "./sources";
 import TextChannelManager from "./text";
 import { createPlayingEmbed } from "./util";
+
+type MessageReply = string | MessagePayload | WebhookEditMessageOptions
 
 export type MusicHandlerSupplier = (guild: Guild) => MusicHandler
 
@@ -69,6 +71,20 @@ export default class MusicHandler {
         })
     }
 
+    private async _respondToInteraction(response: MessageReply, interaction?: ChatInputCommandInteraction) {
+        if (!interaction)
+            return null
+
+        const channel = interaction.channel
+        if (channel === null)
+            return
+
+        if (await this._textManager.isBotChannel(channel))
+            await interaction.deleteReply()
+        else
+            await interaction.editReply(response)
+    }
+
     async play(query: string, voiceChannel: VoiceChannel, interaction?: ChatInputCommandInteraction) {
         let conn: VoiceConnection | null = null
         try {
@@ -78,15 +94,16 @@ export default class MusicHandler {
                 if (this._currentChannel.id === voiceChannel.id) {
                     this._musicPlayer.once("queued", (info: MusicInfo) => {
                         logger.info(`A music has been queued (${info.title}) on voice channel ${voiceChannel.id} of guild ${voiceChannel.guildId}`)
-                        interaction?.editReply({ content: `Added to the queue: ${info.title}` })
+                        this._respondToInteraction({ content: `Added to the queue: ${info.title}` }, interaction)
+                            .catch(e => logger.error(`Error responding to queued interaction: ${e}`))
                     })
 
                     if (!await this._musicPlayer.play(query))
-                        interaction?.editReply({ content: "Unfortunately we cannot play this music. Maybe try another one?" })
+                        await interaction?.editReply({ content: "Unfortunately we cannot play this music. Maybe try another one?" })
                 } else {
                     // bot is busy in this guild
                     logger.debug(`Bot is busy in another VC. Requested: ${voiceChannel.id}, Current: ${this._currentChannel.id}`)
-                    interaction?.editReply({ content: "I'm currently busy playing songs in another channel!" })
+                    await interaction?.editReply({ content: "I'm currently busy playing songs in another channel!" })
                 }
 
                 return
@@ -109,7 +126,8 @@ export default class MusicHandler {
                 logger.info(`Player has started playing on VC ${voiceChannel.id}. Song: ${info.title}`)
 
                 const embed = createPlayingEmbed(info)
-                interaction?.editReply({ embeds: [embed] })
+                this._respondToInteraction({ embeds: [embed] }, interaction)
+                    .catch(e => logger.error(`Error responding to play interaction: ${e}`))
             })
 
             this._musicPlayer.on("end", () => {
@@ -124,9 +142,11 @@ export default class MusicHandler {
             })
 
             if (!await this._musicPlayer.play(query))
-                interaction?.editReply({ content: "Unfortunately we cannot play this music. Maybe try another one?" })
+                await interaction?.editReply({ content: "Unfortunately we cannot play this music. Maybe try another one?" })
         } catch (e) {
             interaction?.editReply({ content: "An unexpected error has occurred while trying to play a music" })
+                .catch(e => logger.error(`Error sending interaction: ${e}`))
+
             logger.error(`An error occurred, destroying voice connection on ${voiceChannel.id}. ${e}`)
             if (conn !== null)
                 conn.destroy()
@@ -135,7 +155,7 @@ export default class MusicHandler {
         }
     }
 
-    stop(interaction: ChatInputCommandInteraction) {
+    async stop(interaction?: ChatInputCommandInteraction) {
         // Stop the music playback & disconnect from voice
         if (this._currentChannel) {
             logger.debug(`Stopping the current music playback on VC ${this._currentChannel?.id}`)
@@ -144,17 +164,18 @@ export default class MusicHandler {
             this._musicPlayer.next()
         }
 
-        interaction.editReply({ content: "Stopped music playback" })
+        await this._respondToInteraction({ content: "Stopped music playback" }, interaction)
     }
 
-    skip(interaction: ChatInputCommandInteraction) {
+    async skip(interaction?: ChatInputCommandInteraction) {
         // Skip the current song
         if (this._currentChannel) {
             logger.debug(`Skipping to the next music on VC ${this._currentChannel.id}`)
             if (this._musicPlayer.hasNext()) {
                 this._musicPlayer.once("playing", (info: MusicInfo) => {
                     const embed = createPlayingEmbed(info)
-                    interaction.editReply({ embeds: [embed] })
+                    this._respondToInteraction({ embeds: [embed] }, interaction)
+                        .catch(e => logger.error(`Error responding to skip interaction: ${e}`))
                 })
 
                 this._musicPlayer.next()
@@ -162,7 +183,7 @@ export default class MusicHandler {
                 this.stop(interaction)
             }
         } else {
-            interaction.editReply({ content: "You should try playing something first :p" })
+            await this._respondToInteraction({ content: "You should try playing something first :p" }, interaction)
         }
     }
 

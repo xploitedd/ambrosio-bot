@@ -1,4 +1,4 @@
-import { ChannelType, Guild, Message, TextChannel } from "discord.js"
+import { ChannelType, Guild, Message, TextBasedChannel, TextChannel } from "discord.js"
 import EventEmitter from "events"
 import { logger } from "../app"
 import { MusicInfo } from "./sources"
@@ -11,14 +11,34 @@ export default class TextChannelManager extends EventEmitter {
     private _setupPromise: Promise<void>
 
     private _textChannel?: TextChannel
-    private _queueMessage?: Message
-    private _playingMessage?: Message
+    private _queueMessage?: string
+    private _playingMessage?: string
 
     constructor(options: { guild: Guild }) {
         super()
 
         this._guild = options.guild
         this._setupPromise = this._setupTextChannel()
+    }
+
+    private async _getQueueMessage(): Promise<Message> {
+        if (this._queueMessage === null || this._textChannel === null)
+            await this._setupPromise
+
+        const channel = this._textChannel as TextChannel
+        const msgId = this._queueMessage as string
+
+        return channel.messages.fetch(msgId)
+    }
+
+    private async _getPlayingMessage(): Promise<Message> {
+        if (this._playingMessage === null || this._textChannel === null)
+            await this._setupPromise
+
+        const channel = this._textChannel as TextChannel
+        const msgId = this._playingMessage as string
+
+        return channel.messages.fetch(msgId)
     }
 
     private async _setupMessages() {
@@ -34,58 +54,69 @@ export default class TextChannelManager extends EventEmitter {
             .then(it => it.map(msg => msg))
 
         if (messages.length < 2) {
-            if (messages.length < 1)
-                this._queueMessage = await channel.send({ embeds: [createQueueEmbed([]) ]})
+            if (messages.length < 1) {
+                this._queueMessage = await channel.send({ embeds: [createQueueEmbed([])] })
+                    .then(it => it.id)
+            }
 
-            this._playingMessage = await channel.send({ embeds: [createPlayingEmbed() ]})
+            this._playingMessage = await channel.send({ embeds: [createPlayingEmbed()] })
+                .then(it => it.id)
         } else {
-            this._queueMessage = messages[1]
-            this._playingMessage = messages[0]
+            this._queueMessage = messages[1].id
+            this._playingMessage = messages[0].id
         }
     }
 
     private async _setupTextChannel() {
-        const channels = await this._guild.channels.fetch()
-        this._textChannel = channels.find(value =>
-            value.type === ChannelType.GuildText && value.name === TEXT_CHANNEL_NAME
-        ) as TextChannel | undefined
+        try {
+            const channels = await this._guild.channels.fetch()
+            this._textChannel = channels.find(value =>
+                value.type === ChannelType.GuildText && value.name === TEXT_CHANNEL_NAME
+            ) as TextChannel | undefined
 
-        if (!this._textChannel) {
-            this._textChannel = await this._guild.channels.create({
-                name: TEXT_CHANNEL_NAME,
-                type: ChannelType.GuildText
-            })
-        }
-
-        this._textChannel.client.on("messageCreate", async message => {
-            if (message.channel.type === ChannelType.GuildText && message.channelId === this._textChannel?.id) {
-                this.emit("new_query", message.content, message)
-
-                try {
-                    await message.delete()
-                } catch (e) {
-                    logger.error(`Error deleting message ${message.id}: ${e}`)
-                }
+            if (!this._textChannel) {
+                this._textChannel = await this._guild.channels.create({
+                    name: TEXT_CHANNEL_NAME,
+                    type: ChannelType.GuildText
+                })
             }
-        })
 
-        await this._setupMessages()
+            this._textChannel.client.on("messageCreate", async message => {
+                if (message.channel.type === ChannelType.GuildText && message.channelId === this._textChannel?.id) {
+                    this.emit("new_query", message.content, message)
+
+                    try {
+                        await message.delete()
+                    } catch (e) {
+                        logger.error(`Error deleting message ${message.id}: ${e}`)
+                    }
+                }
+            })
+
+            await this._setupMessages()
+        } catch (e) {
+            logger.error(`Error setting up music text channels for guild ${this._guild.id}: ${e}`)
+        }
     }
 
     async setPlaying(info?: MusicInfo) {
         if (!this._playingMessage)
             await this._setupPromise
 
-        const msg = this._playingMessage as Message
-        await msg.edit({ embeds: [ createPlayingEmbed(info) ] })
+        const msg = await this._getPlayingMessage()
+        await msg.edit({ embeds: [createPlayingEmbed(info)] })
     }
 
     async setQueue(queue: MusicInfo[]) {
         if (!this._queueMessage)
             await this._setupPromise
 
-        const msg = this._queueMessage as Message
-        await msg.edit({ embeds: [ createQueueEmbed(queue) ] })
+        const msg = await this._getQueueMessage()
+        await msg.edit({ embeds: [createQueueEmbed(queue)] })
     }
 
+    async isBotChannel(channel: TextBasedChannel): Promise<boolean> {
+        await this._setupPromise
+        return this._textChannel?.id === channel.id
+    }
 }

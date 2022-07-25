@@ -9,6 +9,12 @@ interface QueueItem {
     source: PlayerSingleSource
 }
 
+interface FutureQueueItem {
+    query: string
+    info: Promise<MusicInfo>
+    source: PlayerSingleSource
+}
+
 export type PlayerProvider = () => AudioPlayer
 export type ResourceProvider = (stream: Readable) => Promise<AudioResource>
 
@@ -50,27 +56,24 @@ export default class MusicPlayer extends EventEmitter {
         if (!first)
             return false
 
-        const result = await this.play(first)
-        if (result) {
-            for (const query of items) {
-                try {
-                    const source = this._getPlayerSource(query)
-                    if (source === null || !isSingleSource(source))
-                        continue
+        const infoMap = items.map(it => {
+            const source = this._getPlayerSource(it)
+            if (source === null || !isSingleSource(source))
+                return null
 
-                    const info = await source.getInfo(query)
-                    this._queue.push({ info, source })
-                } catch (e) {
-                    logger.warn(`Cannot enqueue a video with query "${query}. Reason: ${e}"`)
-                }
+            return { query: it, info: source.getInfo(it), source } as FutureQueueItem
+        }).filter(it => it !== null) as FutureQueueItem[]
+
+        for (const future of infoMap) {
+            try {
+                const info = await future.info
+                this._queue.push({ info, source: future.source })
+            } catch (e) {
+                logger.warn(`Cannot enqueue a video with query "${future.query}. Reason: ${e}"`)
             }
-
-            this.emit("queued", this._queue[this._queue.length - 1])
-
-            return true
-        } else {
-            return false
         }
+
+        return await this.play(first)
     }
 
     private async _skipToNext() {
@@ -117,7 +120,7 @@ export default class MusicPlayer extends EventEmitter {
             logger.debug(`Fetching stream data for "${query}"`)
 
             const info = await playerSource.getInfo(query)
-            if (this._playing || this._queue.length > 0) {
+            if (this._playing) {
                 this._addToQueue(info, playerSource)
                 return true
             }
