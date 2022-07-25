@@ -110,6 +110,12 @@ client.on("ready", async () => {
         logger.info(`Client is now ready: ${client.user?.username}`)
         await commandRegistry.registerCommands()
         commandRegistry.registerInteractionListener()
+
+        const guilds = await client.guilds.fetch()
+            .then(it => it.map(it => it))
+            .then(it => Promise.all(it.map(it => it.fetch())))
+
+        guilds.forEach(it => musicHandlerSupplier(it))
     } catch (e) {
         console.error(e)
         process.exit(1)

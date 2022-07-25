@@ -203,7 +203,7 @@ export default class MusicHandler {
                 logger.debug(`Shuffling music queue in VC ${this._currentChannel.id}`)
                 this._musicPlayer.shuffleQueue()
                 if (this._musicPlayer.hasNext())
-                    await this._respondToInteraction({ content: "You just shuffled a bunch of musics. Well done DJ!" })
+                    await this._respondToInteraction({ content: "You just shuffled a bunch of musics. Well done DJ!" }, interaction)
                 else
                     await interaction?.deleteReply()
             } else {
