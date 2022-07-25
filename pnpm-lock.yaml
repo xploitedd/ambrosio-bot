@@ -4,6 +4,7 @@ specifiers:
   '@discordjs/opus': ^0.8.0
   '@discordjs/rest': ^1.0.0
   '@discordjs/voice': ^0.11.0
+  '@types/lodash': ^4.14.182
   '@types/node': ^18.0.6
   '@typescript-eslint/eslint-plugin': ^5.30.7
   '@typescript-eslint/parser': ^5.30.7
@@ -13,6 +14,7 @@ specifiers:
   erlpack: ^0.1.4
   eslint: ^8.20.0
   googleapis: ^105.0.0
+  lodash: ^4.17.21
   nodemon: ^2.0.19
   sodium-native: ^3.3.0
   ts-node: ^10.9.1
@@ -31,6 +33,7 @@ dependencies:
   discord.js: 14.0.3_22kvxa7zeyivx4jp72v2w3pkvy
   erlpack: 0.1.4
   googleapis: 105.0.0
+  lodash: 4.17.21
   nodemon: 2.0.19
   sodium-native: 3.3.0
   utf-8-validate: 5.0.9
@@ -39,6 +42,7 @@ dependencies:
   zlib-sync: 0.1.7
 
 devDependencies:
+  '@types/lodash': 4.14.182
   '@types/node': 18.0.6
   '@typescript-eslint/eslint-plugin': 5.30.7_6wltbjakwuqm7awqswigmiuhd4
   '@typescript-eslint/parser': 5.30.7_he2ccbldppg44uulnyq4rwocfa
@@ -256,6 +260,10 @@ packages:
 
   /@types/json-schema/7.0.11:
     resolution: {integrity: sha512-wOuvG1SN4Us4rez+tylwwwCV1psiNVOkJeM3AUWUNWg/jDQY2+HE/444y5gc+jBmRqASOm2Oeh5c1axHobwRKQ==}
+    dev: true
+
+  /@types/lodash/4.14.182:
+    resolution: {integrity: sha512-/THyiqyQAP9AfARo4pF+aCGcyiQ94tX/Is2I7HofNRqoYLgN1PBoOWu2/zTA5zMxzP5EFutMtWtGAFRKUe961Q==}
     dev: true
 
   /@types/node/18.0.6:
@@ -1323,6 +1331,10 @@ packages:
 
   /lodash.uniqwith/4.5.0:
     resolution: {integrity: sha512-7lYL8bLopMoy4CTICbxygAUq6CdRJ36vFc80DucPueUee+d5NBRxz3FdT9Pes/HEx5mPoT9jwnsEJWz1N7uq7Q==}
+    dev: false
+
+  /lodash/4.17.21:
+    resolution: {integrity: sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==}
     dev: false
 
   /logform/2.4.2:

@@ -15,6 +15,7 @@ import YoutubePlaylistSource from "./music/youtube/youtubePlaylistSource"
 import YoutubeTextSource from "./music/youtube/youtubeTextSource"
 import StopCommand from "./commands/music/stop"
 import TextChannelManager from "./music/text"
+import ShuffleCommand from "./commands/music/shuffle"
 
 const loggingLevel = process.env.LOG_LEVEL || "info"
 
@@ -43,6 +44,8 @@ const client = new Client({
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.GuildVoiceStates,
         GatewayIntentBits.GuildPresences,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.GuildMessageReactions,
         GatewayIntentBits.MessageContent
     ] 
 })
@@ -100,6 +103,7 @@ const commandRegistry = new CommandRegistry(client, rest)
     .addCommand(new PlayCommand({ musicHandlerSupplier }))
     .addCommand(new SkipCommand({ musicHandlerSupplier }))
     .addCommand(new StopCommand({ musicHandlerSupplier }))
+    .addCommand(new ShuffleCommand({ musicHandlerSupplier }))
 
 client.on("ready", async () => {
     try {

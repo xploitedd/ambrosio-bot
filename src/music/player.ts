@@ -3,6 +3,7 @@ import EventEmitter from "events";
 import { Readable } from "stream";
 import { logger } from "../app";
 import PlayerSourceRegistry, { MusicInfo, PlayerSingleSource, isPlaylistSource, isSingleSource, PlayerSource } from "./sources";
+import _ from "lodash"
 
 interface QueueItem {
     info: MusicInfo
@@ -174,5 +175,12 @@ export default class MusicPlayer extends EventEmitter {
 
     getCurrentMusic(): MusicInfo | undefined {
         return this._playing
+    }
+
+    shuffleQueue() {
+        if (this._queue.length > 0) {
+            this._queue = _.shuffle(this._queue)
+            this.emit("playing", this._playing)
+        }
     }
 }

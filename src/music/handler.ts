@@ -156,34 +156,61 @@ export default class MusicHandler {
     }
 
     async stop(interaction?: ChatInputCommandInteraction) {
-        // Stop the music playback & disconnect from voice
-        if (this._currentChannel) {
-            logger.debug(`Stopping the current music playback on VC ${this._currentChannel?.id}`)
+        try {
+            // Stop the music playback & disconnect from voice
+            if (this._currentChannel) {
+                logger.debug(`Stopping the current music playback on VC ${this._currentChannel?.id}`)
 
-            this._musicPlayer.clearQueue()
-            this._musicPlayer.next()
+                this._musicPlayer.clearQueue()
+                this._musicPlayer.next()
+
+                await this._respondToInteraction({ content: "Stopped music playback" }, interaction)
+            } else {
+                await this._respondToInteraction({ content: "Cannot stop a bunch of nothingness :p" }, interaction)
+            }
+        } catch (e) {
+            logger.error(`An error occurred while stopping a music player: ${e}`)
         }
-
-        await this._respondToInteraction({ content: "Stopped music playback" }, interaction)
     }
 
     async skip(interaction?: ChatInputCommandInteraction) {
-        // Skip the current song
-        if (this._currentChannel) {
-            logger.debug(`Skipping to the next music on VC ${this._currentChannel.id}`)
-            if (this._musicPlayer.hasNext()) {
-                this._musicPlayer.once("playing", (info: MusicInfo) => {
-                    const embed = createPlayingEmbed(info)
-                    this._respondToInteraction({ embeds: [embed] }, interaction)
-                        .catch(e => logger.error(`Error responding to skip interaction: ${e}`))
-                })
+        try {
+            // Skip the current song
+            if (this._currentChannel) {
+                logger.debug(`Skipping to the next music on VC ${this._currentChannel.id}`)
+                if (this._musicPlayer.hasNext()) {
+                    this._musicPlayer.once("playing", (info: MusicInfo) => {
+                        const embed = createPlayingEmbed(info)
+                        this._respondToInteraction({ embeds: [embed] }, interaction)
+                            .catch(e => logger.error(`Error responding to skip interaction: ${e}`))
+                    })
 
-                this._musicPlayer.next()
+                    this._musicPlayer.next()
+                } else {
+                    this.stop(interaction)
+                }
             } else {
-                this.stop(interaction)
+                await this._respondToInteraction({ content: "You should try playing something first :p" }, interaction)
             }
-        } else {
-            await this._respondToInteraction({ content: "You should try playing something first :p" }, interaction)
+        } catch (e) {
+            logger.error(`An error occurred while skipping a music player: ${e}`)
+        }
+    }
+
+    async shuffle(interaction?: ChatInputCommandInteraction) {
+        try {
+            if (this._currentChannel) {
+                logger.debug(`Shuffling music queue in VC ${this._currentChannel.id}`)
+                this._musicPlayer.shuffleQueue()
+                if (this._musicPlayer.hasNext())
+                    await this._respondToInteraction({ content: "You just shuffled a bunch of musics. Well done DJ!" })
+                else
+                    await interaction?.deleteReply()
+            } else {
+                await this._respondToInteraction({ content: "There are no items for you to shuffle! Try adding more musics..." }, interaction)
+            }
+        } catch (e) {
+            logger.error(`An error occurred while shuffling a music player: ${e}`)
         }
     }
 

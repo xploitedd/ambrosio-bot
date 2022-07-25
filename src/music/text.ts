@@ -83,6 +83,11 @@ export default class TextChannelManager extends EventEmitter {
 
             this._textChannel.client.on("messageCreate", async message => {
                 if (message.channel.type === ChannelType.GuildText && message.channelId === this._textChannel?.id) {
+                    if (message.interaction !== null)
+                        return
+
+                    logger.debug(`Received music query on channel ${this._textChannel.id}: ${message.content}`)
+
                     this.emit("new_query", message.content, message)
 
                     try {
