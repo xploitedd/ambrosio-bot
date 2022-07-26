@@ -1,4 +1,4 @@
-import { entersState, getVoiceConnection, joinVoiceChannel, VoiceConnection, VoiceConnectionStatus } from "@discordjs/voice";
+import { entersState, getVoiceConnection, joinVoiceChannel, VoiceConnectionStatus } from "@discordjs/voice";
 import { ChannelType, ChatInputCommandInteraction, Client, Guild, GuildMember, Message, MessagePayload, VoiceChannel, WebhookEditMessageOptions } from "discord.js";
 import { logger } from "../app";
 import MusicPlayer from "./player";
