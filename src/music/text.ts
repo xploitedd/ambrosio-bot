@@ -11,8 +11,7 @@ export default class TextChannelManager extends EventEmitter {
     private _setupPromise: Promise<void>
 
     private _textChannel?: TextChannel
-    private _queueMessage?: string
-    private _playingMessage?: string
+    private _messageId?: string
 
     constructor(options: { guild: Guild }) {
         super()
@@ -21,22 +20,12 @@ export default class TextChannelManager extends EventEmitter {
         this._setupPromise = this._setupTextChannel()
     }
 
-    private async _getQueueMessage(): Promise<Message> {
-        if (this._queueMessage === null || this._textChannel === null)
+    private async _getMessage(): Promise<Message> {
+        if (this._messageId === null || this._textChannel === null)
             await this._setupPromise
 
         const channel = this._textChannel as TextChannel
-        const msgId = this._queueMessage as string
-
-        return channel.messages.fetch(msgId)
-    }
-
-    private async _getPlayingMessage(): Promise<Message> {
-        if (this._playingMessage === null || this._textChannel === null)
-            await this._setupPromise
-
-        const channel = this._textChannel as TextChannel
-        const msgId = this._playingMessage as string
+        const msgId = this._messageId as string
 
         return channel.messages.fetch(msgId)
     }
@@ -48,23 +37,19 @@ export default class TextChannelManager extends EventEmitter {
         const channel = this._textChannel
         const client = channel.client
 
-        const messages = await this._textChannel.messages.fetch({ cache: false })
+        const messages = await this._textChannel.messages.fetch()
             .then(it => it.filter(msg => msg.author.id === client.user?.id))
             .then(it => it.filter(msg => msg.interaction === null))
             .then(it => it.map(msg => msg))
 
-        if (messages.length < 2) {
-            if (messages.length < 1) {
-                this._queueMessage = await channel.send({ embeds: [createQueueEmbed([])] })
-                    .then(it => it.id)
-            }
-
-            this._playingMessage = await channel.send({ embeds: [createPlayingEmbed()] })
+        if (messages.length === 0) {
+            this._messageId = await channel.send({ embeds: [createQueueEmbed([]), createPlayingEmbed()] })
                 .then(it => it.id)
-        } else {
-            this._queueMessage = messages[1].id
-            this._playingMessage = messages[0].id
+
+            return
         }
+
+        this._messageId = messages[0].id
     }
 
     private async _setupTextChannel() {
@@ -104,20 +89,9 @@ export default class TextChannelManager extends EventEmitter {
         }
     }
 
-    async setPlaying(info?: MusicInfo) {
-        if (!this._playingMessage)
-            await this._setupPromise
-
-        const msg = await this._getPlayingMessage()
-        await msg.edit({ embeds: [createPlayingEmbed(info)] })
-    }
-
-    async setQueue(queue: MusicInfo[]) {
-        if (!this._queueMessage)
-            await this._setupPromise
-
-        const msg = await this._getQueueMessage()
-        await msg.edit({ embeds: [createQueueEmbed(queue)] })
+    async setMessage(playing?: MusicInfo, queue?: MusicInfo[]) {
+        const msg = await this._getMessage()
+        await msg.edit({ embeds: [createQueueEmbed(queue ?? []), createPlayingEmbed(playing)] })
     }
 
     async isBotChannel(channel: TextBasedChannel): Promise<boolean> {

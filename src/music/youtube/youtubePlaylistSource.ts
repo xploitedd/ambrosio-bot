@@ -3,11 +3,12 @@ import { youtube_v3 } from "googleapis";
 import { logger } from "../../app";
 import { getYoutubeUrl } from "./util";
 
-const MAX_LIMIT = 50
+const MAX_LIMIT = 150
+const MAX_LIMIT_PER_PAGE = 50
 
 export default class YoutubePlaylistSource implements PlayerPlaylistSource {
     private readonly _youtube: youtube_v3.Youtube
-    
+
     constructor(options: { youtube: youtube_v3.Youtube }) {
         this._youtube = options.youtube
     }
@@ -40,20 +41,43 @@ export default class YoutubePlaylistSource implements PlayerPlaylistSource {
             throw new Error("Unexpected error")
         }
 
-        const res = await this._youtube.playlistItems.list({
-            playlistId: list,
-            maxResults: options?.limit ?? MAX_LIMIT,
-            part: ["contentDetails"]
-        })
+        let requestedLimit = options?.limit ?? MAX_LIMIT
+        if (requestedLimit > MAX_LIMIT)
+            requestedLimit = MAX_LIMIT
 
-        const items = res.data.items
-        if (!items) {
-            logger.warn(`No playlist items returned for the query "${query}"`)
-            throw new Error("No playlist items returned")
+        const itemsPerQuery = requestedLimit > MAX_LIMIT_PER_PAGE ? MAX_LIMIT_PER_PAGE : requestedLimit
+
+        const videoUrls: string[] = []
+
+        let curPageToken: string | undefined
+        while (requestedLimit > 0) {
+            const res = await this._youtube.playlistItems.list({
+                playlistId: list,
+                maxResults: itemsPerQuery,
+                part: ["contentDetails"],
+                pageToken: curPageToken
+            })
+
+            const items = res.data.items
+            if (!items) {
+                logger.warn(`No playlist items returned for the query "${query}"`)
+                throw new Error("No playlist items returned")
+            }
+
+            const ids = items.filter(it => it.contentDetails !== undefined)
+                .map(it => it.contentDetails?.videoId ?? "")
+                .map(it => getYoutubeUrl(it))
+
+            videoUrls.push(...ids)
+
+            const nextPageToken = res.data.nextPageToken
+            if (!nextPageToken)
+                break
+
+            curPageToken = nextPageToken
+            requestedLimit -= itemsPerQuery
         }
 
-        return items.filter(it => it.contentDetails !== undefined)
-            .map(it => it.contentDetails?.videoId ?? "")
-            .map(it => getYoutubeUrl(it))
+        return videoUrls
     }
 }

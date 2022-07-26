@@ -39,8 +39,7 @@ export default class MusicHandler {
 
         const setMessages = async (queue: MusicInfo[], info?: MusicInfo) => {
             try {
-                await this._textManager.setPlaying(info)
-                await this._textManager.setQueue(queue)
+                await this._textManager.setMessage(info, queue)
             } catch (e) {
                 logger.error(`Error editing message: ${e}`)
             }
@@ -130,14 +129,13 @@ export default class MusicHandler {
                     .catch(e => logger.error(`Error responding to play interaction: ${e}`))
             })
 
-            this._musicPlayer.on("end", () => {
+            this._musicPlayer.once("end", () => {
                 logger.info(`The player has ended for VC ${voiceChannel.id}. Cleaning up...`)
 
                 sub.unsubscribe()
                 if (conn !== null)
                     conn.destroy()
 
-                this._musicPlayer.removeAllListeners()
                 this._currentChannel = undefined
             })
 
