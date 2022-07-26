@@ -1,4 +1,4 @@
-import { AudioPlayer, AudioPlayerStatus, AudioResource, PlayerSubscription, VoiceConnection } from "@discordjs/voice";
+import { AudioPlayer, AudioPlayerStatus, AudioResource, entersState, PlayerSubscription, VoiceConnection } from "@discordjs/voice";
 import EventEmitter from "events";
 import { Readable } from "stream";
 import { logger } from "../app";
@@ -77,13 +77,17 @@ export default class MusicPlayer extends EventEmitter {
         return await this.play(first)
     }
 
+    private async _end() {
+        this._audioPlayer.removeAllListeners()
+        this._playing = undefined
+        this.emit("end")
+    }
+
     private async _skipToNext() {
         logger.debug(`The queue currently has ${this._queue.length} entries.`)
         const next = this._queue.shift()
         if (!next) {
-            this._audioPlayer.removeAllListeners()
-            this._playing = undefined
-            this.emit("end")
+            this._end()
             return
         }
 
@@ -138,6 +142,15 @@ export default class MusicPlayer extends EventEmitter {
                     }
                 } else if (newState.status === AudioPlayerStatus.Playing) {
                     this.emit("playing", this._playing)
+                } else if (newState.status === AudioPlayerStatus.AutoPaused) {
+                    try {
+                        await entersState(this._audioPlayer, AudioPlayerStatus.Playing, 5_000)
+                    } catch (e) {
+                        logger.warn(`The music player could not resume`)
+                        this._queue = []
+                        this._audioPlayer.stop(true)
+                        this._end()
+                    }
                 }
             })
 

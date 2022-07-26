@@ -21,9 +21,7 @@ export default class TextChannelManager extends EventEmitter {
     }
 
     private async _getMessage(): Promise<Message> {
-        if (this._messageId === null || this._textChannel === null)
-            await this._setupPromise
-
+        await this._setupPromise
         const channel = this._textChannel as TextChannel
         const msgId = this._messageId as string
 
@@ -50,6 +48,7 @@ export default class TextChannelManager extends EventEmitter {
         }
 
         this._messageId = messages[0].id
+        this.setMessage()
     }
 
     private async _setupTextChannel() {

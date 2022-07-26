@@ -1,4 +1,4 @@
-import { entersState, joinVoiceChannel, VoiceConnection, VoiceConnectionStatus } from "@discordjs/voice";
+import { entersState, getVoiceConnection, joinVoiceChannel, VoiceConnection, VoiceConnectionStatus } from "@discordjs/voice";
 import { ChannelType, ChatInputCommandInteraction, Client, Guild, GuildMember, Message, MessagePayload, VoiceChannel, WebhookEditMessageOptions } from "discord.js";
 import { logger } from "../app";
 import MusicPlayer from "./player";
@@ -85,11 +85,13 @@ export default class MusicHandler {
     }
 
     async play(query: string, voiceChannel: VoiceChannel, interaction?: ChatInputCommandInteraction) {
-        let conn: VoiceConnection | null = null
+        let conn = getVoiceConnection(voiceChannel.guildId)
+        const wasDisconnected = conn?.state.status === VoiceConnectionStatus.Disconnected
+
         try {
             logger.debug(`Received music query "${query}" in guild ${voiceChannel.guildId}`)
 
-            if (this._currentChannel) {
+            if (this._currentChannel && !wasDisconnected) {
                 if (this._currentChannel.id === voiceChannel.id) {
                     this._musicPlayer.once("queued", (info: MusicInfo) => {
                         logger.info(`A music has been queued (${info.title}) on voice channel ${voiceChannel.id} of guild ${voiceChannel.guildId}`)
@@ -106,6 +108,9 @@ export default class MusicHandler {
                 }
 
                 return
+            } else if (wasDisconnected && this._musicPlayer.getCurrentMusic()) {
+                if (conn)
+                    await entersState(conn, VoiceConnectionStatus.Destroyed, 10_000)
             }
 
             this._currentChannel = voiceChannel
@@ -130,13 +135,27 @@ export default class MusicHandler {
             })
 
             this._musicPlayer.once("end", () => {
-                logger.info(`The player has ended for VC ${voiceChannel.id}. Cleaning up...`)
+                if (this._currentChannel) {
+                    this._currentChannel = undefined
+                    logger.info(`The player has ended for VC ${voiceChannel.id}. Cleaning up...`)
 
-                sub.unsubscribe()
-                if (conn !== null)
-                    conn.destroy()
+                    sub.unsubscribe()
+                    if (conn && conn.state.status !== VoiceConnectionStatus.Destroyed)
+                        conn.destroy()
+                }
+            })
 
-                this._currentChannel = undefined
+            conn.on(VoiceConnectionStatus.Disconnected, async () => {
+                if (conn) {
+                    try {
+                        await Promise.race([
+                            entersState(conn, VoiceConnectionStatus.Signalling, 5_000),
+                            entersState(conn, VoiceConnectionStatus.Connecting, 5_000)
+                        ])
+                    } catch (e) {
+                        logger.warn(`Error reconnecting after disconnect on VC ${voiceChannel.id}`)
+                    }
+                }
             })
 
             if (!await this._musicPlayer.play(query))
@@ -145,11 +164,12 @@ export default class MusicHandler {
             interaction?.editReply({ content: "An unexpected error has occurred while trying to play a music" })
                 .catch(e => logger.error(`Error sending interaction: ${e}`))
 
-            logger.error(`An error occurred, destroying voice connection on ${voiceChannel.id}. ${e}`)
-            if (conn !== null)
-                conn.destroy()
-
-            this._currentChannel = undefined
+            if (this._currentChannel) {
+                this._currentChannel = undefined
+                logger.error(`An error occurred, destroying voice connection on ${voiceChannel.id}. ${e}`)
+                if (conn && conn.state.status !== VoiceConnectionStatus.Destroyed)
+                    conn.destroy()
+            }
         }
     }
 
