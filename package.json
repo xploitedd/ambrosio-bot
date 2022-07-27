@@ -37,6 +37,7 @@
     "spotify-web-api-node": "^5.0.2",
     "utf-8-validate": "^5.0.9",
     "winston": "^3.8.1",
+    "youtube-search-without-api-key": "^1.0.7",
     "ytdl-core": "^4.11.0",
     "zlib-sync": "^0.1.7"
   }

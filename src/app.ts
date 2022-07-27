@@ -18,6 +18,7 @@ import TextChannelManager from "./music/text"
 import ShuffleCommand from "./commands/music/shuffle"
 import SpotifyWebApi from "spotify-web-api-node"
 import SpotifySongSource from "./music/spotify/spotifySongSource"
+import SpotifyPlaylistSource from "./music/spotify/spotifyPlaylistSource"
 
 const loggingLevel = process.env.LOG_LEVEL || "info"
 
@@ -52,8 +53,10 @@ const client = new Client({
     ] 
 })
 
+const youtubeTextSource = new YoutubeTextSource()
 const playerSourceRegistry = new PlayerSourceRegistry()
     .addSource(new YoutubePlayerSource())
+    .setFallback(youtubeTextSource)
 
 const YOUTUBE_TOKEN = process.env.YOUTUBE_TOKEN
 if (YOUTUBE_TOKEN) {
@@ -62,9 +65,7 @@ if (YOUTUBE_TOKEN) {
         auth: YOUTUBE_TOKEN
     })
 
-    const youtubeTextSource = new YoutubeTextSource({ youtube })
     playerSourceRegistry.addSource(new YoutubePlaylistSource({ youtube }))
-        .setFallback(youtubeTextSource)
 
     const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID
     const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET
@@ -89,6 +90,8 @@ if (YOUTUBE_TOKEN) {
         (async () => {
             await setupSpotifyCredentials()
             playerSourceRegistry.addSource(new SpotifySongSource({ spotifyApi, youtubeTextSource }))
+                .addSource(new SpotifyPlaylistSource({ spotifyApi, youtubeTextSource }))
+
             logger.info("Spotify player source is now available")
         })()
     } else {
