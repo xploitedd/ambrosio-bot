@@ -16,6 +16,8 @@ import YoutubeTextSource from "./music/youtube/youtubeTextSource"
 import StopCommand from "./commands/music/stop"
 import TextChannelManager from "./music/text"
 import ShuffleCommand from "./commands/music/shuffle"
+import SpotifyWebApi from "spotify-web-api-node"
+import SpotifySongSource from "./music/spotify/spotifySongSource"
 
 const loggingLevel = process.env.LOG_LEVEL || "info"
 
@@ -60,8 +62,38 @@ if (YOUTUBE_TOKEN) {
         auth: YOUTUBE_TOKEN
     })
 
+    const youtubeTextSource = new YoutubeTextSource({ youtube })
     playerSourceRegistry.addSource(new YoutubePlaylistSource({ youtube }))
-        .setFallback(new YoutubeTextSource({ youtube }))
+        .setFallback(youtubeTextSource)
+
+    const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID
+    const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET
+    if (SPOTIFY_CLIENT_ID && SPOTIFY_CLIENT_SECRET) {
+        const spotifyApi = new SpotifyWebApi({
+            clientId: SPOTIFY_CLIENT_ID,
+            clientSecret: SPOTIFY_CLIENT_SECRET
+        })
+
+        const setupSpotifyCredentials = async () => {
+            logger.debug("Obtaining new spotify access token")
+            const res = await spotifyApi.clientCredentialsGrant()
+            const token = res.body.access_token
+            const expires = res.body.expires_in
+
+            spotifyApi.setAccessToken(token)
+
+            const timeout = expires > 10 ? expires - 10 : expires
+            setTimeout(() => setupSpotifyCredentials(), timeout * 1000)
+        }
+
+        (async () => {
+            await setupSpotifyCredentials()
+            playerSourceRegistry.addSource(new SpotifySongSource({ spotifyApi, youtubeTextSource }))
+            logger.info("Spotify player source is now available")
+        })()
+    } else {
+        logger.warn("Define the SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET environment variables to enable spotify as a player source")
+    }
 } else {
     logger.warn("Define the YOUTUBE_TOKEN in your environment variable to enable more player sources")
 }

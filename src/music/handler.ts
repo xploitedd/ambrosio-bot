@@ -86,12 +86,12 @@ export default class MusicHandler {
 
     async play(query: string, voiceChannel: VoiceChannel, interaction?: ChatInputCommandInteraction) {
         let conn = getVoiceConnection(voiceChannel.guildId)
-        const wasDisconnected = conn?.state.status === VoiceConnectionStatus.Disconnected
+        const isDisconnected = conn?.state.status === VoiceConnectionStatus.Disconnected
 
         try {
             logger.debug(`Received music query "${query}" in guild ${voiceChannel.guildId}`)
 
-            if (this._currentChannel && !wasDisconnected) {
+            if (this._currentChannel && !isDisconnected) {
                 if (this._currentChannel.id === voiceChannel.id) {
                     this._musicPlayer.once("queued", (info: MusicInfo) => {
                         logger.info(`A music has been queued (${info.title}) on voice channel ${voiceChannel.id} of guild ${voiceChannel.guildId}`)
@@ -108,9 +108,12 @@ export default class MusicHandler {
                 }
 
                 return
-            } else if (wasDisconnected && this._musicPlayer.getCurrentMusic()) {
-                if (conn)
+            } else if (isDisconnected && this._musicPlayer.getCurrentMusic()) {
+                this._currentChannel = undefined
+                if (conn) {
+                    conn.destroy()
                     await entersState(conn, VoiceConnectionStatus.Destroyed, 10_000)
+                }
             }
 
             this._currentChannel = voiceChannel
