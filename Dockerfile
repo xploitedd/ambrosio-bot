@@ -10,9 +10,9 @@ COPY ./src ./src
 
 RUN tsc
 
-FROM node:18-alpine as runner
+FROM node:18-slim as runner
 
-RUN apk add --no-cache ffmpeg npm
+RUN apt update && apt install -y ffmpeg
 
 WORKDIR /app
 
@@ -20,4 +20,4 @@ COPY --from=builder ./package.json ./package.json
 COPY --from=builder ./node_modules ./node_modules
 COPY --from=builder ./dist ./dist
 
-CMD ["npm", "run", "start:prod"]
+CMD ["yarn", "run", "start:prod"]
